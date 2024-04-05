@@ -1,13 +1,15 @@
 use cosmwasm_std::{
-    entry_point, BankMsg, SubMsg, Coin, Coins, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, StdError
+    entry_point, BankMsg, SubMsg, Coin, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, StdError
 };
+use cosmwasm_std::to_binary;
 use cw2::set_contract_version;
+use cosmwasm_std::{ Addr};
 use thiserror::Error;
 use serde::{Deserialize, Serialize};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Proposal, Member, PROPOSALS, MEMBERS};
+use crate::state::{Proposal, Member, PROPOSAL_COUNT, PROPOSALS, MEMBERS};
 
-const CONTRACT_NAME: &str = "grant-dao";
+const CONTRACT_NAME: &str = "workshop-dao";
 const CONTRACT_VERSION: &str = "0.1.0";
 
 #[derive(Error, Debug)]
@@ -22,6 +24,7 @@ pub enum ContractError {
     AlreadyExecuted {},
 }
 
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -30,6 +33,11 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Initialize proposal count with 0
+    PROPOSAL_COUNT.save(deps.storage, &0u64)?;
+
+
 
     for member in msg.members {
         MEMBERS.save(deps.storage, member.address.as_str(), &Member {
@@ -49,7 +57,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Propose { title, description, recipient, amount } => execute_propose(deps, info, title, description),
+        ExecuteMsg::Propose { title, description, recipient, amount } => execute_propose(deps, env, info, title, description, recipient,amount),
         ExecuteMsg::Vote { proposal_id, approve } => execute_vote(deps, info, proposal_id, approve),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, proposal_id),  // Add env here
     }
@@ -57,32 +65,46 @@ pub fn execute(
 
 fn execute_propose(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     title: String,
     description: String,
+    recipient: Option<Addr>,
+    amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-
     let sender_addr = info.sender.as_str();
     let member_opt = MEMBERS.load(deps.storage, sender_addr);
 
+    // This automatically returns Unauthorized if the sender is not found in MEMBERS
     if member_opt.is_err() {
         return Err(ContractError::Unauthorized {});
     }
 
+    // Get the current proposal count and increment it for a new unique ID
+    let mut proposal_count = PROPOSAL_COUNT.load(deps.storage).unwrap_or_default();
+    proposal_count += 1;
+
+    // Save the updated count back to storage
+    PROPOSAL_COUNT.save(deps.storage, &proposal_count)?;
+
+
+
+    let voting_period = 604800; // 7 days in seconds
     let proposal = Proposal {
-        id: 0, 
+        id: 0, // This should be a unique ID, possibly increment based on the last ID
         title,
         description,
         votes_for: Uint128::zero(),
         votes_against: Uint128::zero(),
         executed: false,
-        amount: Uint128::zero(), //TODO: set to param at instantiate time
-        recipient: info.sender.clone(),
+        amount: amount.unwrap_or_else(Uint128::zero),
+        recipient: recipient.unwrap_or(info.sender),
+        voting_end: env.block.time.seconds() + voting_period,
     };
 
     PROPOSALS.save(deps.storage, &proposal.id.to_string(), &proposal)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attribute("action", "propose"))
 }
 
 fn execute_vote(
@@ -97,6 +119,7 @@ fn execute_vote(
     if member_opt.is_err() {
         return Err(ContractError::Unauthorized {});
     }
+    // We are trying to extract the value if it's Some or None
 
     let member = member_opt.unwrap();
 
@@ -115,14 +138,13 @@ fn execute_vote(
 
 fn execute_execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
     let mut proposal = PROPOSALS.load(deps.storage, &proposal_id.to_string())?;
 
-    if proposal.executed {
-        return Err(ContractError::AlreadyExecuted {});
-    }
+    
+
 
     if proposal.votes_for > proposal.votes_against {
         let recipient = &proposal.recipient;
@@ -161,7 +183,44 @@ fn execute_execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    Err(StdError::generic_err("Not implemented")) 
+    match msg {
+        QueryMsg::GetProposal { proposal_id } => query_proposal(deps, proposal_id),
+        QueryMsg::ListProposals {} => query_all_proposals(deps),
+        QueryMsg::GetMember { address } => query_member(deps, address),
+        QueryMsg::ListMembers {} => query_all_members(deps),
+    }
+}
+
+fn query_proposal(deps: Deps, proposal_id: u64) -> StdResult<Binary> {
+    let proposal = PROPOSALS.load(deps.storage, &proposal_id.to_string())
+        .map_err(|_| StdError::not_found("Proposal"))?;
+    to_binary(&proposal)
+}
+
+fn query_all_proposals(deps: Deps) -> StdResult<Binary> {
+    let proposals = PROPOSALS.range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|item| {
+            let (_key, proposal) = item?;
+            Ok(proposal)
+        })
+        .collect::<StdResult<Vec<Proposal>>>()?;
+    to_binary(&proposals)
+}
+
+fn query_member(deps: Deps, address: Addr) -> StdResult<Binary> {
+    let member = MEMBERS.load(deps.storage, address.as_str())
+        .map_err(|_| StdError::not_found("Member"))?;
+    to_binary(&member)
+}
+
+fn query_all_members(deps: Deps) -> StdResult<Binary> {
+    let members = MEMBERS.range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|item| {
+            let (_key, member) = item?;
+            Ok(member)
+        })
+        .collect::<StdResult<Vec<Member>>>()?;
+    to_binary(&members)
 }
 
 #[cfg(test)]
@@ -187,7 +246,8 @@ mod tests {
 
             },
         ];
-        let msg = InstantiateMsg { members }; 
+
+        let msg = InstantiateMsg {members};
         let info = mock_info("creator", &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -203,6 +263,7 @@ mod tests {
                 weight: Uint128::from(10_u128),
             },
         ];
+
         let msg = InstantiateMsg { members };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -252,6 +313,7 @@ mod tests {
         assert_eq!(0, res.messages.len());
     }
 
+
     #[test]
     fn execute_proposal() {
         let mut deps = mock_dependencies();
@@ -285,4 +347,5 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
         assert_eq!(1, res.messages.len());
     }
+    
 }

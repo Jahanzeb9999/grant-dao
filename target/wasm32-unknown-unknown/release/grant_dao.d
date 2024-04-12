@@ -1,0 +1,1 @@
+/Users/jahanzebhussain/Documents/grant-dao/target/wasm32-unknown-unknown/release/grant_dao.wasm: /Users/jahanzebhussain/Documents/grant-dao/src/contract.rs /Users/jahanzebhussain/Documents/grant-dao/src/lib.rs /Users/jahanzebhussain/Documents/grant-dao/src/msg.rs /Users/jahanzebhussain/Documents/grant-dao/src/state.rs

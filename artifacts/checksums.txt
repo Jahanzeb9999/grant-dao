@@ -1,1 +1,1 @@
-643cb4c79383840320ace6cf5fd78dcbeb51e2f3ad287e32ef0e5da7079f6b78  grant_dao.wasm
+78ca9987ddcd6c5249f967a670997654d06cfaec3b5b0fb16946b7e77ef96bed  grant_dao.wasm

@@ -8,9 +8,9 @@ COREUM_HOME=$(HOME)/.core/"$(COREUM_CHAIN_ID)"
 COREUM_BINARY_NAME=$(shell arch | sed s/aarch64/cored-linux-arm64/ | sed s/x86_64/cored-linux-amd64/)
 
 DEV_WALLET=dev-wallet
-CODE_ID=1
+CODE_ID=1178
 
-_CONTRACT_ADDRESS_=testcore1td6j5a99pnu2zezcrckjfnwcmhmwfmcu35svxpphv3qx59n8sf0q4et20n
+_CONTRACT_ADDRESS_=testcore1rt5khxlnt9yh0wqwdwvdu0y9lfheapx3jh6w6hqav6782fr3xedsyywkxl
 _WALLET_ADDRESS_=testcore1xhvglxz55w0uy73t5lxhypt8leud9wsd92ccjq
 
 .PHONY: dev test add_account build deploy check keys q fund instantiate contract_address
@@ -63,12 +63,13 @@ propose:
 	"{\"propose\": {\"title\":\"YOUR_TITLE_HERE\", \"description\":\"YOUR_DESCRIPTION_HERE\"}}" \
 	--from ${DEV_WALLET} --gas auto --gas-adjustment 1.3 -b block -y $(COREUM_NODE_ARGS) $(COREUM_CHAIN_ID_ARGS)
 
+
 vote:
-	cored-00 tx wasm execute $(_CONTRACT_ADDRESS_) \
+	cored tx wasm execute $(_CONTRACT_ADDRESS_) \
 	"{\"vote\": {\"proposal_id\":0, \"approve\":true}}" \
 	--from ${DEV_WALLET} --gas auto --gas-adjustment 1.3 -b block -y $(COREUM_NODE_ARGS) $(COREUM_CHAIN_ID_ARGS)
 
 execute:
-	cored-00 tx wasm execute $(_CONTRACT_ADDRESS_) \
+	cored tx wasm execute $(_CONTRACT_ADDRESS_) \
 	"{\"execute\": {\"proposal_id\":0}}" \
 	--from ${DEV_WALLET} --gas auto --gas-adjustment 1.3 -b block -y $(COREUM_NODE_ARGS) $(COREUM_CHAIN_ID_ARGS)

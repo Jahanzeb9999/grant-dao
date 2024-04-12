@@ -1,0 +1,3 @@
+cargo:rerun-if-changed=build/main.rs
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/jahanzebhussain/Documents/grant-dao/target/wasm32-unknown-unknown/release/build/typenum-5e7b8fc5eefdb759/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/jahanzebhussain/Documents/grant-dao/target/wasm32-unknown-unknown/release/build/typenum-5e7b8fc5eefdb759/out/op.rs

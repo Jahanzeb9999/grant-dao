@@ -1,0 +1,1 @@
+{"rustc":12152928357286724068,"features":"[\"alloc\", \"default\", \"std\"]","target":9465486909595536736,"profile":3797293754785534760,"path":9816454890419417261,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/bech32-529e7bd720bbc71e/dep-lib-bech32"}}],"rustflags":[],"metadata":1692970757982761152,"config":2202906307356721367,"compile_kind":0}

@@ -1,16 +1,13 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use crate::state::{Member, Proposal};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
-use crate::state::{Member};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub members: Vec<Member>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Propose {
         title: String,
@@ -27,15 +24,21 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
-    GetProposal {
-        proposal_id: u64,
+    #[returns(Proposal)]
+    GetProposal { proposal_id: u64 },
+    #[returns(Vec<Proposal>)]
+    ListProposals {
+        start_after: Option<u64>,
+        limit: Option<u32>,
     },
-    ListProposals {},
-    GetMember {
-        address: Addr,
+    #[returns(Member)]
+    GetMember { address: Addr },
+    #[returns(Vec<Member>)]
+    ListMembers {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
     },
-    ListMembers {},
 }
